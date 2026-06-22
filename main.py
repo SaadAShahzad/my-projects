@@ -1,28 +1,34 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-
-class Skill(BaseModel):
-    name:str
-
-s=["sql","java","python","ml","dl","cv"]    
+from fastapi import FastAPI,Depends
+from sqlmodel import Session,select
+from database import Skill,engine,create_db
 
 app=FastAPI()
+
+
+@app.on_event("startup")
+def on_startup():
+    create_db()
+
+
 
 
 @app.get("/")
 async def root():
     return {"message":"First API endpoint"}
 
-@app.get("/student")
-async def student():
-    return {"name":"Saad","city":"rwp","semester":"6"}
+
 
 @app.get("/skills")
 async def skills():
-    return s
-
+    with Session(engine) as db:
+        results=db.exec(select(Skill)).all()
+        return results
+    
 
 @app.post("/add-skill")
-async def add_skill(skill:Skill):
-    s.append(skill.name)
-    return s
+async def add_skill(skill: Skill):
+    with Session(engine) as db:
+        db.add(skill)
+        db.commit()
+        db.refresh(skill)
+        return skill
